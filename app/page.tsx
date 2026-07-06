@@ -1,36 +1,107 @@
-/**
- * [MN-001] 메인 홈
- * Page Type: Page | Login: N | User Action: 읽기
- */
-import { Button } from "@/components/ui/button";
+'use client'
 
-export default function Home() {
+import { useEffect, useState } from 'react'
+import { supabase } from '@/lib/supabase/client'
+import { Card, CardContent } from '@/components/ui/card'
+import { Header } from '@/components/layout/Header'
+import { BottomNav } from '@/components/layout/BottomNav'
+import { MapPin } from 'lucide-react'
+
+type Spot = {
+  id: string
+  title: string
+  location: string
+  spot_type: 'track' | 'road'
+  image_url: string | null
+  is_indoor: boolean
+  is_free: boolean
+}
+
+export default function HomePage() {
+  const [spots, setSpots] = useState<Spot[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    async function fetchSpots() {
+      const { data, error } = await supabase
+        .from('spots')
+        .select('id, title, location, spot_type, image_url, is_indoor, is_free')
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        console.error('스팟 목록을 불러오지 못했어요:', error.message)
+      } else {
+        setSpots(data ?? [])
+      }
+      setIsLoading(false)
+    }
+
+    fetchSpots()
+  }, [])
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-6 p-8">
-      <div className="text-center">
-        <h1 className="text-3xl font-bold tracking-tight">
-          🛼 인라인 커뮤니티
-        </h1>
-        <p className="mt-2 text-muted-foreground">
-          shadcn/ui Button 컴포넌트 작동 확인 화면 (MN-001)
-        </p>
-      </div>
+    <div className="mx-auto flex min-h-screen max-w-md flex-col bg-background">
+      <Header />
 
-      <div className="flex flex-wrap items-center justify-center gap-3">
-        <Button>기본 버튼</Button>
-        <Button variant="secondary">Secondary</Button>
-        <Button variant="outline">Outline</Button>
-        <Button variant="ghost">Ghost</Button>
-        <Button variant="destructive">Destructive</Button>
-        <Button variant="link">Link</Button>
-      </div>
+      <main className="flex flex-1 flex-col gap-3 px-4 py-4">
+        {isLoading && (
+          <>
+            {[1, 2, 3].map((i) => (
+              <Card key={i} className="animate-pulse">
+                <CardContent className="h-20 p-4" />
+              </Card>
+            ))}
+          </>
+        )}
 
-      <div className="flex flex-wrap items-center justify-center gap-3">
-        <Button size="sm">Small</Button>
-        <Button size="default">Default</Button>
-        <Button size="lg">Large</Button>
-        <Button disabled>Disabled</Button>
-      </div>
-    </main>
-  );
+        {!isLoading && spots.length === 0 && (
+          <div className="flex flex-col items-center gap-2 py-16 text-center text-muted-foreground">
+            <MapPin size={28} strokeWidth={1.5} />
+            <p className="text-sm">등록된 스팟이 아직 없어요.</p>
+          </div>
+        )}
+
+        {!isLoading &&
+          spots.map((spot) => (
+            <Card key={spot.id}>
+              <CardContent className="flex items-center gap-3 p-4">
+                <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted">
+                  {spot.image_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={spot.image_url}
+                      alt={spot.title}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <MapPin size={20} className="text-muted-foreground" strokeWidth={1.8} />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">{spot.title}</p>
+                  <p className="truncate text-xs text-muted-foreground">{spot.location}</p>
+                  <div className="mt-1 flex gap-1">
+                    <span className="rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">
+                      {spot.spot_type === 'track' ? '트랙' : '로드'}
+                    </span>
+                    {spot.is_indoor && (
+                      <span className="rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">
+                        실내
+                      </span>
+                    )}
+                    {spot.is_free && (
+                      <span className="rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">
+                        무료
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+      </main>
+
+      <BottomNav />
+    </div>
+  )
 }
